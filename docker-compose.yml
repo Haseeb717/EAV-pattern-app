@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    command: rails server -b 0.0.0.0
+    volumes:
+      - .:/app
+    ports:
+      - '3000:3000'
+    environment:
+      DATABASE_URL: sqlite3://db/development.sqlite3
+    depends_on:
+      - db
+
+  db:
+    image: nouchka/sqlite3
+    volumes:
+      - db_data:/app/db
+
+volumes:
+  db_data:
