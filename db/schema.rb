@@ -10,5 +10,36 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 0) do
+ActiveRecord::Schema[7.0].define(version: 2024_08_27_183041) do
+  create_table "batteries", force: :cascade do |t|
+    t.integer "capacity"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "custom_attribute_definitions", force: :cascade do |t|
+    t.string "model_type"
+    t.string "key"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "custom_attributes", force: :cascade do |t|
+    t.string "customizable_type", null: false
+    t.integer "customizable_id", null: false
+    t.string "key"
+    t.string "value"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["customizable_type", "customizable_id", "key"], name: "index_custom_attributes_on_type_and_id_and_key", unique: true
+    t.index ["customizable_type", "customizable_id"], name: "index_custom_attributes_on_customizable"
+  end
+
+  create_table "customers", force: :cascade do |t|
+    t.string "name"
+    t.string "phone_number"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
 end
