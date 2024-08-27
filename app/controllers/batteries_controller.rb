@@ -1,23 +1,18 @@
-# app/controllers/batteries_controller.rb
+# frozen_string_literal: true
+
 class BatteriesController < ApplicationController
-  before_action :set_battery, only: [:show, :update, :destroy]
+  before_action :set_battery, only: %i[show update destroy]
 
   # GET /batteries
   def index
     @batteries = Battery.includes(:custom_attributes).all
 
-    respond_to do |format|
-      format.html # renders index.html.erb
-      format.json { render json: @batteries.map { |battery| battery_with_custom_attributes(battery) } }
-    end
+    render json: @batteries.map { |battery| battery_with_custom_attributes(battery) }
   end
 
   # GET /batteries/:id
   def show
-    respond_to do |format|
-      format.html # renders show.html.erb
-      format.json { render json: battery_with_custom_attributes(@battery) }
-    end
+    render json: battery_with_custom_attributes(@battery)
   end
 
   # POST /batteries
@@ -25,34 +20,23 @@ class BatteriesController < ApplicationController
     @battery = Battery.new(battery_params)
 
     if @battery.save
-      handle_custom_attributes(@battery)
-
-      respond_to do |format|
-        format.html { redirect_to @battery, notice: 'Battery was successfully created.' }
-        format.json { render json: battery_with_custom_attributes(@battery), status: :created }
-      end
+      handle_successful_creation(@battery)
     else
-      respond_to do |format|
-        format.html { render :new } # render the form again with errors
-        format.json { render json: { errors: @battery.errors.full_messages }, status: :unprocessable_entity }
-      end
+      handle_creation_failure(@battery)
     end
   end
 
   # PUT /batteries/:id
   def update
     if @battery.update(battery_params)
-      handle_custom_attributes(@battery)
-
-      respond_to do |format|
-        format.html { redirect_to @battery, notice: 'Battery was successfully updated.' }
-        format.json { render json: battery_with_custom_attributes(@battery), status: :ok }
+      begin
+        handle_custom_attributes(@battery)
+        render json: battery_with_custom_attributes(@battery), status: :ok
+      rescue StandardError => e
+        render json: { error: e.message }, status: :unprocessable_entity and return
       end
     else
-      respond_to do |format|
-        format.html { render :edit } # render the edit form again with errors
-        format.json { render json: { errors: @battery.errors.full_messages }, status: :unprocessable_entity }
-      end
+      render json: { errors: @battery.errors.full_messages }, status: :unprocessable_entity
     end
   end
 
@@ -72,18 +56,30 @@ class BatteriesController < ApplicationController
 
   # Strong parameters for the battery
   def battery_params
-    params.require(:battery).permit(:capacity) # Only allow standard attributes
+    params.require(:battery).permit(:capacity)
+  end
+
+  def handle_successful_creation(battery)
+    handle_custom_attributes(battery)
+
+    render json: battery_with_custom_attributes(battery), status: :created
+  rescue StandardError => e
+    logger.error("Failed to handle custom attributes: #{e.message}")
+    render json: { error: 'An error occurred while processing custom attributes.' }, status: :unprocessable_entity
+  end
+
+  def handle_creation_failure(battery)
+    render json: { errors: battery.errors.full_messages }, status: :unprocessable_entity
   end
 
   def handle_custom_attributes(resource)
-    # All other attributes from the battery hash are considered custom attributes
     custom_attributes = params[:battery].except(:capacity) # Exclude standard params
+
+    return unless custom_attributes.present?
 
     begin
       resource.set_custom_attributes(custom_attributes)
-    rescue => e
-      # Handle error and ensure it doesn't interrupt flow
-      render json: { error: e.message }, status: :unprocessable_entity and return
+    rescue StandardError
     end
   end
 
