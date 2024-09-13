@@ -17,26 +17,12 @@ class CustomersController < ApplicationController
   # POST /customers
   def create
     @customer = Customer.new(customer_params)
-
-    if @customer.save
-      handle_successful_creation(@customer)
-    else
-      handle_creation_failure(@customer)
-    end
+    handle_result(@customer.save, @customer, :created)
   end
 
   # PUT /customers/:id
   def update
-    if @customer.update(customer_params)
-      begin
-        handle_custom_attributes(@customer)
-        render json: customer_with_custom_attributes(@customer), status: :ok
-      rescue StandardError => e
-        render json: { error: e.message }, status: :unprocessable_entity and return
-      end
-    else
-      render json: { errors: @customer.errors.full_messages }, status: :unprocessable_entity
-    end
+    handle_result(@customer.update(customer_params), @customer, :ok)
   end
 
   # DELETE /customers/:id
@@ -56,27 +42,21 @@ class CustomersController < ApplicationController
     params.require(:customer).permit(:name, :phone_number) # Only allow standard attributes
   end
 
-  def handle_successful_creation(customer)
-    handle_custom_attributes(customer)
-
-    render json: customer_with_custom_attributes(customer), status: :created
+  def handle_result(success, customer, success_status)
+    if success
+      handle_custom_attributes(customer)
+      render json: customer_with_custom_attributes(customer), status: success_status
+    else
+      render json: { errors: customer.errors.full_messages }, status: :unprocessable_entity
+    end
   rescue StandardError => e
     logger.error("Failed to handle custom attributes: #{e.message}")
     render json: { error: 'An error occurred while processing custom attributes.' }, status: :unprocessable_entity
   end
 
-  def handle_creation_failure(customer)
-    render json: { errors: customer.errors.full_messages }, status: :unprocessable_entity
-  end
-
   def handle_custom_attributes(resource)
     custom_attributes = params[:customer].except(:name, :phone_number) # Exclude standard params
-
-    # Only set custom attributes and handle errors without rendering twice
-    begin
-      resource.set_custom_attributes(custom_attributes)
-    rescue StandardError
-    end
+    resource.set_custom_attributes(custom_attributes) if custom_attributes.present?
   end
 
   def customer_with_custom_attributes(customer)
