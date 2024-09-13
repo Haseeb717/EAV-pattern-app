@@ -14,7 +14,9 @@ RSpec.describe 'Batteries', type: :request do
     it 'creates a battery with custom attributes' do
       post '/batteries', params: valid_params
       expect(response).to have_http_status(:created)
-      expect(JSON.parse(response.body)['make']).to eq('BrandX')
+
+      json_response = JSON.parse(response.body)
+      expect(json_response['data']['attributes']['custom_attributes']['make']).to eq('BrandX')
     end
   end
 
@@ -24,7 +26,9 @@ RSpec.describe 'Batteries', type: :request do
     it 'updates battery with custom attributes' do
       put "/batteries/#{battery.id}", params: { battery: { make: 'BrandY' } }
       expect(response).to have_http_status(:ok)
-      expect(JSON.parse(response.body)['make']).to eq('BrandY')
+
+      json_response = JSON.parse(response.body)
+      expect(json_response['data']['attributes']['custom_attributes']['make']).to eq('BrandY')
     end
   end
 end

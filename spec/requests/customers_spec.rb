@@ -14,7 +14,9 @@ RSpec.describe 'Customers', type: :request do
     it 'creates a customer with custom attributes' do
       post '/customers', params: valid_params
       expect(response).to have_http_status(:created)
-      expect(JSON.parse(response.body)['email']).to eq('john.doe@example.com')
+
+      json_response = JSON.parse(response.body)
+      expect(json_response['data']['attributes']['custom_attributes']['email']).to eq('john.doe@example.com')
     end
   end
 
@@ -24,7 +26,9 @@ RSpec.describe 'Customers', type: :request do
     it 'updates customer with custom attributes' do
       put "/customers/#{customer.id}", params: { customer: { email: 'new.email@example.com' } }
       expect(response).to have_http_status(:ok)
-      expect(JSON.parse(response.body)['email']).to eq('new.email@example.com')
+
+      json_response = JSON.parse(response.body)
+      expect(json_response['data']['attributes']['custom_attributes']['email']).to eq('new.email@example.com')
     end
   end
 end

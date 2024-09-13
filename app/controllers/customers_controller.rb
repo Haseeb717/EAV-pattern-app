@@ -6,12 +6,12 @@ class CustomersController < ApplicationController
   # GET /customers
   def index
     @customers = Customer.includes(:custom_attributes).all
-    render json: @customers.map { |customer| customer_with_custom_attributes(customer) }
+    render json: CustomerSerializer.new(@customers).serializable_hash
   end
 
   # GET /customers/:id
   def show
-    render json: customer_with_custom_attributes(@customer)
+    render json: CustomerSerializer.new(@customer).serializable_hash
   end
 
   # POST /customers
@@ -35,6 +35,8 @@ class CustomersController < ApplicationController
 
   def set_customer
     @customer = Customer.includes(:custom_attributes).find(params[:id])
+  rescue ActiveRecord::RecordNotFound
+    render json: { error: 'Customer not found' }, status: :not_found
   end
 
   # Strong parameters for the customer
@@ -45,7 +47,7 @@ class CustomersController < ApplicationController
   def handle_result(success, customer, success_status)
     if success
       handle_custom_attributes(customer)
-      render json: customer_with_custom_attributes(customer), status: success_status
+      render json: CustomerSerializer.new(customer).serializable_hash, status: success_status
     else
       render json: { errors: customer.errors.full_messages }, status: :unprocessable_entity
     end
@@ -57,9 +59,5 @@ class CustomersController < ApplicationController
   def handle_custom_attributes(resource)
     custom_attributes = params[:customer].except(:name, :phone_number) # Exclude standard params
     resource.set_custom_attributes(custom_attributes) if custom_attributes.present?
-  end
-
-  def customer_with_custom_attributes(customer)
-    customer.attributes.merge(customer.custom_attributes_hash)
   end
 end
