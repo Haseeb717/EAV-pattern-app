@@ -6,7 +6,6 @@ class BatteriesController < ApplicationController
   # GET /batteries
   def index
     @batteries = Battery.includes(:custom_attributes).all
-
     render json: @batteries.map { |battery| battery_with_custom_attributes(battery) }
   end
 
@@ -18,26 +17,12 @@ class BatteriesController < ApplicationController
   # POST /batteries
   def create
     @battery = Battery.new(battery_params)
-
-    if @battery.save
-      handle_successful_creation(@battery)
-    else
-      handle_creation_failure(@battery)
-    end
+    handle_result(@battery.save, @battery, :created) # Using :created for create
   end
 
   # PUT /batteries/:id
   def update
-    if @battery.update(battery_params)
-      begin
-        handle_custom_attributes(@battery)
-        render json: battery_with_custom_attributes(@battery), status: :ok
-      rescue StandardError => e
-        render json: { error: e.message }, status: :unprocessable_entity and return
-      end
-    else
-      render json: { errors: @battery.errors.full_messages }, status: :unprocessable_entity
-    end
+    handle_result(@battery.update(battery_params), @battery, :ok) # Using :ok for update
   end
 
   # DELETE /batteries/:id
@@ -59,28 +44,21 @@ class BatteriesController < ApplicationController
     params.require(:battery).permit(:capacity)
   end
 
-  def handle_successful_creation(battery)
-    handle_custom_attributes(battery)
-
-    render json: battery_with_custom_attributes(battery), status: :created
+  def handle_result(success, battery, success_status)
+    if success
+      handle_custom_attributes(battery)
+      render json: battery_with_custom_attributes(battery), status: success_status
+    else
+      render json: { errors: battery.errors.full_messages }, status: :unprocessable_entity
+    end
   rescue StandardError => e
     logger.error("Failed to handle custom attributes: #{e.message}")
     render json: { error: 'An error occurred while processing custom attributes.' }, status: :unprocessable_entity
   end
 
-  def handle_creation_failure(battery)
-    render json: { errors: battery.errors.full_messages }, status: :unprocessable_entity
-  end
-
   def handle_custom_attributes(resource)
     custom_attributes = params[:battery].except(:capacity) # Exclude standard params
-
-    return unless custom_attributes.present?
-
-    begin
-      resource.set_custom_attributes(custom_attributes)
-    rescue StandardError
-    end
+    resource.set_custom_attributes(custom_attributes) if custom_attributes.present?
   end
 
   def battery_with_custom_attributes(battery)
