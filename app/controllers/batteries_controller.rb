@@ -6,12 +6,12 @@ class BatteriesController < ApplicationController
   # GET /batteries
   def index
     @batteries = Battery.includes(:custom_attributes).all
-    render json: @batteries.map { |battery| battery_with_custom_attributes(battery) }
+    render json: BatterySerializer.new(@batteries).serializable_hash
   end
 
   # GET /batteries/:id
   def show
-    render json: battery_with_custom_attributes(@battery)
+    render json: BatterySerializer.new(@battery).serializable_hash
   end
 
   # POST /batteries
@@ -47,7 +47,7 @@ class BatteriesController < ApplicationController
   def handle_result(success, battery, success_status)
     if success
       handle_custom_attributes(battery)
-      render json: battery_with_custom_attributes(battery), status: success_status
+      render json: BatterySerializer.new(battery).serializable_hash, status: success_status
     else
       render json: { errors: battery.errors.full_messages }, status: :unprocessable_entity
     end
@@ -59,9 +59,5 @@ class BatteriesController < ApplicationController
   def handle_custom_attributes(resource)
     custom_attributes = params[:battery].except(:capacity) # Exclude standard params
     resource.set_custom_attributes(custom_attributes) if custom_attributes.present?
-  end
-
-  def battery_with_custom_attributes(battery)
-    battery.attributes.merge(battery.custom_attributes_hash)
   end
 end
